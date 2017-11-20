@@ -1,0 +1,94 @@
+<link rel="import" href="bower_components/polymer/polymer-element.html">
+<link rel="import" href="bower_components/paper-input/paper-input.html">
+<link rel="import" href="bower_components/paper-input/paper-textarea.html">
+<link rel="import" href="bower_components/paper-button/paper-button.html">
+
+<dom-module id="websocket-element">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+    </style>
+    <paper-input always-float-label label="pseudo" value="{{pseudo}}">
+      </paper-input>
+      <paper-textarea always-float-label label="message" value="{{message}}"></paper-textarea>
+      <paper-button raised class="indigo" on-click="_send">send</paper-button>
+      <ul>
+        <template is="dom-repeat" items="{{messages}}">
+          <li>{{item.pseudo}} says "{{item.message}}"</li>
+        </template>
+      </ul>
+
+      </template>
+  </template>
+
+  <script>
+    /**
+     * `websocket-element`
+     * 
+     *
+     * @customElement
+     * @polymer
+     * @demo demo/index.html
+     */
+    class WebsocketElement extends Polymer.Element {
+      static get is() { return 'websocket-element'; }
+      static get properties() {
+        return {
+          pseudo: {
+            type: String
+          },
+          message: {
+            type: String
+          },
+          _messages: {
+            type: Array,
+            value: []
+          },
+          messages: {
+            type: Array,
+            computed: '_reverseArray(_messages)'
+          }
+        };
+      }
+
+      _reverseArray(toto) {
+        let tmp = toto.slice();
+        tmp.reverse();
+        return tmp;
+      }
+
+      _send(e) {
+        let msg = {
+          message: this.message,
+          pseudo: this.pseudo
+        };
+        this._addToMessages(msg);
+        this.ws.send(JSON.stringify(msg));
+      }
+      connectedCallback() {
+        super.connectedCallback();
+        this.ws = new WebSocket("ws://localhost:8080/name");
+        let self = this;
+        this.ws.onmessage = function (event) {
+          let message = JSON.parse(event.data);
+          self._addToMessages(message);
+        };
+      }
+
+      _addToMessages(message) {
+          this._messages.push(message);
+          this._messages = this._messages.slice(Math.max(0,this._messages.length-10),this._messages.length);
+          this.notifyPath("_messages");
+      }
+
+      disconnectedCallback() {
+        super.disconnectedCallback();
+        this.ws.close();
+      }
+    }
+
+    window.customElements.define(WebsocketElement.is, WebsocketElement);
+  </script>
+</dom-module>
